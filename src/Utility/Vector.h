@@ -7,7 +7,6 @@
 
 #pragma once
 
-#include "Primitives.h"
 
 template<typename T>
 union v2
@@ -38,7 +37,7 @@ union v2
 
 typedef v2<f32> v2f;
 typedef v2<u32> v2u;
-typedef v2<i32> v2i;
+typedef v2<s32> v2s;
 
 
 template<typename T>

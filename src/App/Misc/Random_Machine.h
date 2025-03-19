@@ -11,8 +11,8 @@
 
 struct Random_Machine
 {
-    i32 noise_position = 0;
-    i32 seed = 1;
+    s32 noise_position = 0;
+    s32 seed = 1;
     
     u32 random_u32(u32 max)
     {
@@ -20,12 +20,20 @@ struct Random_Machine
         return result;
     }
     
+    
     f32 random_f32()
     {
         u32 r = Noise_Squirrel3(noise_position++, seed) % 1000;
         
         f32 result = ((f32)r / (f32)1000);
         
+        return result;
+    }
+    
+    
+    f32 random_f32_from_minus_one_to_one()
+    {
+        f32 result = -1 + random_f32() * 2.f;
         return result;
     }
 };

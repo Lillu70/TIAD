@@ -12,9 +12,20 @@
 
 static inline Color Pack_Color(v3f color)
 {
-    color.r = Min(255.f, Max(color.r, 0.f));
-    color.g = Min(255.f, Max(color.g, 0.f));
-    color.b = Min(255.f, Max(color.b, 0.f));
+    if(color.r < 0.f)
+        color.r = 0.f;
+    else if(color.r > 255.f)
+        color.r = 255.f;
+    
+    if(color.g < 0.f)
+        color.g = 0.f;
+    else if(color.g > 255.f)
+        color.g = 255.f;
+    
+    if(color.b < 0.f)
+        color.b = 0.f;
+    else if(color.b > 255.f)
+        color.b = 255.f;
     
     return Make_Color(u8(color.r), u8(color.g), u8(color.b));
 }
@@ -22,19 +33,22 @@ static inline Color Pack_Color(v3f color)
 
 static inline Color Pack_Color(v4f color)
 {
-    color.r = Min(255.f, Max(color.r, 0.f));
-    color.g = Min(255.f, Max(color.g, 0.f));
-    color.b = Min(255.f, Max(color.b, 0.f));
-    color.a = Min(255.f, Max(color.a, 0.f));
+    if(color.r < 0.f)
+        color.r = 0.f;
+    else if(color.r > 255.f)
+        color.r = 255.f;
+    
+    if(color.g < 0.f)
+        color.g = 0.f;
+    else if(color.g > 255.f)
+        color.g = 255.f;
+    
+    if(color.b < 0.f)
+        color.b = 0.f;
+    else if(color.b > 255.f)
+        color.b = 255.f;
     
     return Make_Color(u8(color.r), u8(color.g), u8(color.b), u8(color.a));
-}
-
-
-static inline v2f Get_Middle(Canvas* canvas)
-{
-    v2f result = v2u::Cast<f32>(canvas->dim) * 0.5f;
-    return result;
 }
 
 
@@ -58,6 +72,13 @@ static inline v4f Unpack_Color_With_Alpha(Color color)
     result.r = f32(color.red);
     result.a = f32(color.alpha);
     
+    return result;
+}
+
+
+static inline v2f Get_Middle(Canvas* canvas)
+{
+    v2f result = v2u::Cast<f32>(canvas->dim) * 0.5f;
     return result;
 }
 
@@ -129,7 +150,7 @@ static inline Canvas Create_Sub_Canvas(Canvas* master_canvas, v2u dim, v2u buffe
 }
 
 
-static inline bool Is_Point_On_Canvas(Canvas* canvas, v2i p)
+static inline bool Is_Point_On_Canvas(Canvas* canvas, v2s p)
 {
     Assert(canvas);
     
@@ -140,7 +161,7 @@ static inline bool Is_Point_On_Canvas(Canvas* canvas, v2i p)
 }
 
 
-static inline bool Get_Pixel_Idx(Canvas* canvas, v2i p, u32* out_idx)
+static inline bool Get_Pixel_Idx(Canvas* canvas, v2s p, u32* out_idx)
 {
     Assert(canvas);
     
@@ -161,7 +182,7 @@ static inline bool Get_Pixel_Idx(Canvas* canvas, v2i p, u32* out_idx)
 }
 
 
-static inline void Set_Pixel(Canvas* canvas, v2i p, Color color)
+static inline void Set_Pixel(Canvas* canvas, v2s p, Color color)
 {
     Assert(canvas);
     
@@ -172,17 +193,20 @@ static inline void Set_Pixel(Canvas* canvas, v2i p, Color color)
 }
 
 
-static inline u32 Get_Pixel_Idx_HZ(Canvas* canvas, v2i p)
+static inline u32 Get_Pixel_Idx_HZ(Canvas* canvas, v2s p)
 {
     Assert(canvas);
+    Assert(canvas->row_stride);
+    Assert(canvas->dim.x && canvas->dim.y);
     Assert(Is_Point_On_Canvas(canvas, p));
+    
     u32 result = canvas->row_stride * p.y + p.x;
     
     return result;
 }
 
 
-static inline void Set_Pixel_HZ(Canvas* canvas, v2i p, Color color)
+static inline void Set_Pixel_HZ(Canvas* canvas, v2s p, Color color)
 {
     Assert(canvas);
     u32 pixel_idx = Get_Pixel_Idx_HZ(canvas, p);
@@ -194,6 +218,7 @@ static inline void Set_Pixel_HZ(Canvas* canvas, v2i p, Color color)
 static inline void Set_Pixel_Idx_HZ(Canvas* canvas, u32 idx, Color color)
 {
     Assert(canvas);
+    Assert(canvas->row_stride);
     
     // Only checks if the idx is on the master canvas, 
     // at this point there is no way to know if is on a sub canvas.
@@ -202,7 +227,7 @@ static inline void Set_Pixel_Idx_HZ(Canvas* canvas, u32 idx, Color color)
 }
 
 
-static inline Color Get_Pixel_HZ(Canvas* canvas, v2i p)
+static inline Color Get_Pixel_HZ(Canvas* canvas, v2s p)
 {
     Assert(Is_Point_On_Canvas(canvas, p));
     u32 c = *((u32*)(canvas->buffer + Get_Pixel_Idx_HZ(canvas, p)));
@@ -217,10 +242,7 @@ static void Clear_Canvas(Canvas* canvas, Color color)
     Assert(canvas);
     Assert(canvas->row_stride == canvas->dim.x);
     
-    Start_Scope_Timer(clear_canvas);
-    
     u32 canvas_area = canvas->row_stride * canvas->dim.y;
-    
     
     //TODO: SIMD???
     for(u32 i = 0; i < canvas_area; ++i)
@@ -231,20 +253,18 @@ static void Clear_Canvas(Canvas* canvas, Color color)
 static void Clear_Sub_Canvas(Canvas* canvas, Color color)
 {
     Assert(canvas);
-    
-    Start_Scope_Timer(set_sub_canvas);
-    
-    for(i32 y = 0; y < i32(canvas->dim.y); ++y)
+
+    for(s32 y = 0; y < s32(canvas->dim.y); ++y)
     {
-        for(i32 x = 0; x < i32(canvas->dim.x); ++x)
+        for(s32 x = 0; x < s32(canvas->dim.x); ++x)
         {
-            Set_Pixel_HZ(canvas, v2i{x, y}, color);
+            Set_Pixel_HZ(canvas, v2s{x, y}, color);
         }
     }
 }
 
 
-static inline void Blend_Pixel_With_Color(Canvas* canvas, v2i p, v3f color, f32 fraction)
+static inline void Blend_Pixel_With_Color(Canvas* canvas, v2s p, v3f color, f32 fraction)
 {
     Color buffer_color_packed = Get_Pixel_HZ(canvas, p);
     v3f buffer_color = Unpack_Color(buffer_color_packed);
@@ -255,7 +275,7 @@ static inline void Blend_Pixel_With_Color(Canvas* canvas, v2i p, v3f color, f32 
 }
 
 
-static inline void Blend_Pixel_With_Color(Canvas* canvas, v2i p, v3f color, f32 fraction, u8 alpha)
+static inline void Blend_Pixel_With_Color(Canvas* canvas, v2s p, v3f color, f32 fraction, u8 alpha)
 {
     Color buffer_color_packed = Get_Pixel_HZ(canvas, p);
     v3f buffer_color = Unpack_Color(buffer_color_packed);
@@ -274,6 +294,8 @@ static inline void Draw_Rect_Ribbon(
     v2f floor_max, 
     Color color32)
 {
+    Assert(canvas->buffer);
+    
     v3f color = Unpack_Color(color32);
     
     // Left ribbon
@@ -286,52 +308,52 @@ static inline void Draw_Rect_Ribbon(
     bool has_max_fraction_y = max_fraction.y > 0 && max_fraction.y < 1;
     
     if(has_inv_min_fraction_x)
-        for(i32 y = (i32)ceil_min.y; y < (i32)floor_max.y; ++y)
-            Blend_Pixel_With_Color(canvas, v2i{(i32)floor_min.x, y}, color, inv_min_fraction.x);
+        for(s32 y = (s32)ceil_min.y; y < (s32)floor_max.y; ++y)
+            Blend_Pixel_With_Color(canvas, v2s{(s32)floor_min.x, y}, color, inv_min_fraction.x);
         
     // Bottom ribbon
     if(has_inv_min_fraction_y)
-        for(i32 x = (i32)ceil_min.x; x < (i32)floor_max.x; ++x)
-            Blend_Pixel_With_Color(canvas, v2i{x, (i32)floor_min.y}, color, inv_min_fraction.y);
+        for(s32 x = (s32)ceil_min.x; x < (s32)floor_max.x; ++x)
+            Blend_Pixel_With_Color(canvas, v2s{x, (s32)floor_min.y}, color, inv_min_fraction.y);
 
     
     // Right ribbon
     if(has_max_fraction_x)
-        for(i32 y = (i32)ceil_min.y; y < (i32)floor_max.y; ++y)
-            Blend_Pixel_With_Color(canvas, v2i{(i32)floor_max.x, y}, color, max_fraction.x);
+        for(s32 y = (s32)ceil_min.y; y < (s32)floor_max.y; ++y)
+            Blend_Pixel_With_Color(canvas, v2s{(s32)floor_max.x, y}, color, max_fraction.x);
         
     
     // Top ribbon
     if(has_max_fraction_y)
-        for(i32 x = (i32)ceil_min.x; x < (i32)floor_max.x; ++x)
-            Blend_Pixel_With_Color(canvas, v2i{x, (i32)floor_max.y}, color, max_fraction.y);
+        for(s32 x = (s32)ceil_min.x; x < (s32)floor_max.x; ++x)
+            Blend_Pixel_With_Color(canvas, v2s{x, (s32)floor_max.y}, color, max_fraction.y);
         
     // Ribbon corners
     
     if(has_inv_min_fraction_x && has_inv_min_fraction_y)
     {
-        v2i p = v2i{(i32)floor_min.x, (i32)floor_min.y};
+        v2s p = v2s{(s32)floor_min.x, (s32)floor_min.y};
         f32 subpixel_area = inv_min_fraction.x * inv_min_fraction.y;
         Blend_Pixel_With_Color(canvas, p, color, subpixel_area);
     }
     
     if(has_max_fraction_x && has_inv_min_fraction_y)
     {
-        v2i p = v2i{(i32)floor_max.x, (i32)floor_min.y};
+        v2s p = v2s{(s32)floor_max.x, (s32)floor_min.y};
         f32 subpixel_area = max_fraction.x * inv_min_fraction.y;
         Blend_Pixel_With_Color(canvas, p, color, subpixel_area);
     }
     
     if(has_inv_min_fraction_x && has_max_fraction_y)
     {
-        v2i p = v2i{(i32)floor_min.x, (i32)floor_max.y};
+        v2s p = v2s{(s32)floor_min.x, (s32)floor_max.y};
         f32 subpixel_area = inv_min_fraction.x * max_fraction.y;
         Blend_Pixel_With_Color(canvas, p, color, subpixel_area);
     }
     
     if(has_max_fraction_x && has_max_fraction_y)
     {
-        v2i p = v2i{(i32)floor_max.x, (i32)floor_max.y};
+        v2s p = v2s{(s32)floor_max.x, (s32)floor_max.y};
         f32 subpixel_area = max_fraction.x * max_fraction.y;
         Blend_Pixel_With_Color(canvas, p, color, subpixel_area);
     }
@@ -343,6 +365,8 @@ static inline void Draw_Rect_Ribbon(
 //TODO: Call this something sane.
 static inline bool Verify_Rect_(Canvas* canvas, Rect* rect)
 {
+    Assert(canvas->buffer);
+    
     // Complitely off screen rects.
     {
         if(rect->min.x >= canvas->dim.x)
@@ -383,6 +407,7 @@ static inline bool Verify_Rect_(Canvas* canvas, Rect* rect)
 static void Draw_Filled_Rect(Canvas* canvas, Rect rect, Color fill_color)
 {
     Assert(canvas);
+    Assert(canvas->buffer);
     //Start_Scope_Timer(render_filled_rect);
 
     if(Verify_Rect_(canvas, &rect))
@@ -392,9 +417,9 @@ static void Draw_Filled_Rect(Canvas* canvas, Rect rect, Color fill_color)
         v2f floor_max = Trunc(rect.max);
         
         // Shrinking internal Pixels.
-        for(i32 y = (i32)ceil_min.y; y < (i32)floor_max.y; ++y)
-            for(i32 x = (i32)ceil_min.x; x < (i32)floor_max.x; ++x)
-                Set_Pixel_HZ(canvas, v2i{x, y}, fill_color);
+        for(s32 y = (s32)ceil_min.y; y < (s32)floor_max.y; ++y)
+            for(s32 x = (s32)ceil_min.x; x < (s32)floor_max.x; ++x)
+                Set_Pixel_HZ(canvas, v2s{x, y}, fill_color);
         
         Draw_Rect_Ribbon(canvas, rect, ceil_min, floor_min, floor_max, fill_color);
     }    
@@ -416,28 +441,28 @@ static inline void Draw_Filled_Rect_Outline_Step(
     // This looks funky, but trying to walk the memory in cache friendy way.
     
     // Bottom
-    i32 y_max = (i32)Min(ceil_min.y + outline.y, (f32)canvas->dim.y - 1);
-    for(i32 y = (i32)ceil_min.y; y < y_max; ++y)
-        for(i32 x = (i32)ceil_min.x; x < (i32)floor_max.x; ++x)
-            Set_Pixel_HZ(canvas, v2i{x, y}, outline_color);
+    s32 y_max = (s32)Min(ceil_min.y + outline.y, (f32)canvas->dim.y - 1);
+    for(s32 y = (s32)ceil_min.y; y < y_max; ++y)
+        for(s32 x = (s32)ceil_min.x; x < (s32)floor_max.x; ++x)
+            Set_Pixel_HZ(canvas, v2s{x, y}, outline_color);
     
     // Top
-    i32 y_min = (i32)Max(floor_max.y - outline.y, 0.f);
-    for(i32 y = y_min; y < (i32)floor_max.y; ++y)
-        for(i32 x = (i32)ceil_min.x; x < (i32)floor_max.x; ++x)
-            Set_Pixel_HZ(canvas, v2i{x, y}, outline_color);
+    s32 y_min = (s32)Max(floor_max.y - outline.y, 0.f);
+    for(s32 y = y_min; y < (s32)floor_max.y; ++y)
+        for(s32 x = (s32)ceil_min.x; x < (s32)floor_max.x; ++x)
+            Set_Pixel_HZ(canvas, v2s{x, y}, outline_color);
 
     
-    i32 x_min = (i32)Max(floor_max.x - outline.x, 0.f);
-    i32 x_max = (i32)Min(ceil_min.x + outline.x, (f32)canvas->dim.x - 1);
+    s32 x_min = (s32)Max(floor_max.x - outline.x, 0.f);
+    s32 x_max = (s32)Min(ceil_min.x + outline.x, (f32)canvas->dim.x - 1);
     
-    for(i32 y = y_max; y < y_min; ++y)
+    for(s32 y = y_max; y < y_min; ++y)
     {
-        for(i32 x = (i32)ceil_min.x; x < x_max; ++x)
-            Set_Pixel_HZ(canvas, v2i{x, y}, outline_color);
+        for(s32 x = (s32)ceil_min.x; x < x_max; ++x)
+            Set_Pixel_HZ(canvas, v2s{x, y}, outline_color);
         
-        for(i32 x = x_min; x < (i32)floor_max.x; ++x)
-            Set_Pixel_HZ(canvas, v2i{x, y}, outline_color);
+        for(s32 x = x_min; x < (s32)floor_max.x; ++x)
+            Set_Pixel_HZ(canvas, v2s{x, y}, outline_color);
     }
     
     
@@ -452,9 +477,8 @@ static void Draw_Filled_Rect_With_Outline(
     u32 outline_thickness, 
     Color outline_color)
 {
-    //Start_Scope_Timer(render_filled_rect_with_outline);
-    
     Assert(canvas);
+    Assert(canvas->buffer);
     Assert(Is_Rect_Valid(rect));
     
     if(!outline_thickness) // CONSIDER: Assert instead?
@@ -489,6 +513,34 @@ static void Draw_Filled_Rect_With_Outline(
 }
 
 
+static void Draw_Rect_Outline(Canvas* canvas, Rect rect, Color outline_color, u32 outline_thickness)
+{
+    //Start_Scope_Timer(render_filled_rect_with_outline);
+    
+    Assert(canvas);
+    Assert(canvas->buffer);
+    Assert(Is_Rect_Valid(rect));
+    Assert(outline_thickness);
+    
+    Rect rect2 = rect;
+    
+    if(!Verify_Rect_(canvas, &rect2))
+        return;
+    
+    v2f dim = Get_Rect_Dimensions(rect);
+    f32 outline_width = f32(outline_thickness);
+    v2f outline = v2f{outline_width, outline_width};
+    
+    if(dim.x < outline_width)
+        outline.x = dim.x;
+    
+    if(dim.y < outline_width)
+        outline.y = dim.y;
+    
+    Draw_Filled_Rect_Outline_Step(canvas, rect2, outline, outline_color);
+}
+
+
 static void Draw_Percentile_Bar(
     Canvas* canvas, 
     Rect rect, 
@@ -498,6 +550,7 @@ static void Draw_Percentile_Bar(
     Color bar_color,
     f32 fill_percent)
 {
+    Assert(canvas->buffer);
     Assert(Is_Rect_Valid(rect));
     
     fill_percent = Clamp_To_Barycentric(fill_percent);
@@ -553,58 +606,17 @@ static void Draw_Text(
     Assert(scale.x > 0);
     Assert(scale.y > 0);
     
-    v2i cursor = {};
+    v2s cursor = {};
 
     v2f glyph_size = Hadamar_Product(v2f{f32(font->char_width), f32(font->char_height)}, scale);
 
     for(; *text; ++text, ++cursor.x)
     {
         u8 c = (*text);
-        v2f p = Hadamar_Product(v2i::Cast<f32>(cursor), glyph_size) + pos;
+        v2f p = Hadamar_Product(v2s::Cast<f32>(cursor), glyph_size) + pos;
         Draw_Glyph(canvas, p, scale, color, c, font);
     }
 }
-
-
-static void Draw_Text(
-    Canvas* canvas,
-    String_View text,
-    v2f pos,
-    Color color,
-    Font* font,
-    v2f scale)
-{
-    Assert(canvas);
-    Assert(font);
-    Assert(scale.x > 0);
-    Assert(scale.y > 0);
-
-    v2i cursor = {};
-
-    v2f glyph_size = Hadamar_Product(v2f{f32(font->char_width), f32(font->char_height)}, scale);
-
-    for(char* ptr = text.buffer; ptr < text.buffer + text.lenght; ++ptr, ++cursor.x)
-    {
-        u8 c = (*ptr);
-        v2f p = Hadamar_Product(v2i::Cast<f32>(cursor), glyph_size) + pos;
-        Draw_Glyph(canvas, p, scale, color, c, font);
-    }
-}
-
-/*
-u8 glyph = (*ptr);
-i32 font_offset = (i32)glyph - 33;
-
-if(glyph == '\n')
-{
-    cursor.x = -1;
-    cursor.y += 1;
-    continue;    
-}
-
-if(font_offset < 0 || font_offset > 93)
-    continue;
-*/
 
 
 static void Draw_Glyph(
@@ -614,40 +626,41 @@ static void Draw_Glyph(
     Color packed_color,
     char character,
     Font* font)
-{    
+{
+    Assert(canvas->buffer);
+    
     v2f floor_p = Floor(pos);
     
     v2f glyph_size = Hadamar_Product(v2f{f32(font->char_width), f32(font->char_height)}, scale);
     v2f ceil_p = Ceil(pos + glyph_size);
-    v2i floor_int_p = v2f::Cast<i32>(floor_p);
+    v2s floor_int_p = v2f::Cast<s32>(floor_p);
 
-    v2i max = {i32(ceil_p.x - floor_p.x), i32(ceil_p.y - floor_p.y)};
+    v2s max = {s32(ceil_p.x - floor_p.x), s32(ceil_p.y - floor_p.y)};
 
     // Internal pixels.
-    i32 y_min = 1, y_max = max.y;
-    i32 x_min = 1, x_max = max.x;
+    s32 y_min = 1, y_max = max.y;
+    s32 x_min = 1, x_max = max.x;
     
-    i32 pixel_x_max = floor_int_p.x + x_max;
-    if(pixel_x_max > i32(canvas->dim.x))
+    s32 pixel_x_max = floor_int_p.x + x_max;
+    if(pixel_x_max > s32(canvas->dim.x))
         x_max = x_max - (pixel_x_max - canvas->dim.x);
 
-    i32 pixel_x_min = floor_int_p.x;
+    s32 pixel_x_min = floor_int_p.x;
     if(pixel_x_min < 0)
         x_min = -pixel_x_min;    
 
-    i32 pixel_y_max = floor_int_p.y + y_max;
-    if(pixel_y_max > i32(canvas->dim.y))
+    s32 pixel_y_max = floor_int_p.y + y_max;
+    if(pixel_y_max > s32(canvas->dim.y))
         y_max = y_max - (pixel_y_max - canvas->dim.y);
 
-    i32 pixel_y_min = floor_int_p.y;
+    s32 pixel_y_min = floor_int_p.y;
     if(pixel_y_min < 0)
         y_min = -pixel_y_min;    
 
     // CONSIDER: Start timing after this point? Not much point in timing no work.
     if(y_min >= y_max || x_min >= x_max)
         return;
-    
-    Start_Scope_Timer(render_glyph);
+   
     
     u8* glyph;
     if(character >= 33 && character <= 126)
@@ -698,15 +711,15 @@ static void Draw_Glyph(
     
     #ifdef SSE // Going fast going wide.
     
-    __m128i zeroes         = _mm_set1_epi32(0);
-    __m128i ones         = _mm_set1_epi32(1);
-    __m128 inv_scale_x     = _mm_set1_ps(inv_scale.x);
-    __m128 wide_df         = _mm_set1_ps(df);
-    __m128 wide_rf         = _mm_set1_ps(rf);
-    __m128 wide_uf         = _mm_set1_ps(uf);
-    __m128 wide_urf     = _mm_set1_ps(urf);
+    __m128i zeroes          = _mm_set1_epi32(0);
+    __m128i ones            = _mm_set1_epi32(1);
+    __m128 inv_scale_x      = _mm_set1_ps(inv_scale.x);
+    __m128 wide_df          = _mm_set1_ps(df);
+    __m128 wide_rf          = _mm_set1_ps(rf);
+    __m128 wide_uf          = _mm_set1_ps(uf);
+    __m128 wide_urf         = _mm_set1_ps(urf);
     
-    for(i32 y = y_min; y < y_max; ++y)
+    for(s32 y = y_min; y < y_max; ++y)
     { 
         u32 sample_y = u32(y * inv_scale.y);
         if(sample_y >= font->char_height)
@@ -724,9 +737,9 @@ static void Draw_Glyph(
         
         __m128i wide_glyph_row_sub = _mm_set1_epi32(glyph_row_sub);
         
-        i32 pixel_y = floor_int_p.y + y;
+        s32 pixel_y = floor_int_p.y + y;
 
-        for(i32 x4 = x_min; x4 < x_max; x4 += 4)
+        for(s32 x4 = x_min; x4 < x_max; x4 += 4)
         {
             f32 x0 = f32(x4);
             f32 x1 = f32(x4 + 1);
@@ -747,8 +760,8 @@ static void Draw_Glyph(
             
             #endif
             
-            fsample_x                 = _mm_mul_ps(fsample_x, inv_scale_x);
-            fsample_x_sub             = _mm_mul_ps(fsample_x_sub, inv_scale_x);
+            fsample_x                = _mm_mul_ps(fsample_x, inv_scale_x);
+            fsample_x_sub            = _mm_mul_ps(fsample_x_sub, inv_scale_x);
             
             __m128i sample_x         = _mm_cvttps_epi32(fsample_x);                         // Truncate f32 to u32.
             __m128i sample_x_sub     = _mm_cvttps_epi32(fsample_x_sub);                     // Truncate f32 to u32.
@@ -761,21 +774,21 @@ static void Draw_Glyph(
             __m128i p_df             = _mm_and_si128(wide_glyph_row, sample_mask1);         // Bitwise and.
             p_df                     = _mm_srlv_epi32(p_df, sample_x);                      // Shift right (variadic).
             __m128 pixel_value_df    = _mm_cvtepi32_ps(p_df);                               // Convert u32 to f32.
-                    
-                    
+            
+            
             __m128i p_rf             = _mm_and_si128(wide_glyph_row, sample_mask2);         // Bitwise and.
             p_rf                     = _mm_srlv_epi32(p_rf, sample_x_sub);                  // Shift right (variadic).
             __m128 pixel_value_rf    = _mm_cvtepi32_ps(p_rf);                               // Convert u32 to f32.
-                    
-                    
+            
+            
             __m128i p_uf             = _mm_and_si128(wide_glyph_row_sub, sample_mask1);     // Bitwise and.
             p_uf                     = _mm_srlv_epi32(p_uf, sample_x);                      // Shift right (variadic).
             __m128 pixel_value_uf    = _mm_cvtepi32_ps(p_uf);                               // Convert u32 to f32.
             
             
-            __m128i p_urf             = _mm_and_si128(wide_glyph_row_sub, sample_mask2);    // Bitwise and.
-            p_urf                     = _mm_srlv_epi32(p_urf, sample_x_sub);                // Shift right (variadic).
-            __m128 pixel_value_urf    = _mm_cvtepi32_ps(p_urf);                             // Convert u32 to f32.
+            __m128i p_urf            = _mm_and_si128(wide_glyph_row_sub, sample_mask2);    // Bitwise and.
+            p_urf                    = _mm_srlv_epi32(p_urf, sample_x_sub);                // Shift right (variadic).
+            __m128 pixel_value_urf   = _mm_cvtepi32_ps(p_urf);                             // Convert u32 to f32.
             
             
             __m128 tf[4] = {};
@@ -788,7 +801,7 @@ static void Draw_Glyph(
             __m128 color_sum_b = _mm_add_ps(tf[2], tf[3]);
             __m128 color_sum_t = _mm_add_ps(color_sum_a, color_sum_b);
             
-            for(i32 p = 0; p < Array_Lenght(tf); ++p)
+            for(s32 p = 0; p < Array_Lenght(tf); ++p)
             {
                 if(x4 + p >= x_max)
                     break;
@@ -796,7 +809,7 @@ static void Draw_Glyph(
                 f32 color_amount = (*((v4f*)&color_sum_t)).elements[p];
                 if(color_amount > 0.01f)
                 {
-                    v2i pixel_p = {floor_int_p.x + x4 + p, pixel_y};
+                    v2s pixel_p = {floor_int_p.x + x4 + p, pixel_y};
                     if(color_amount > 0.95f)
                         Set_Pixel_HZ(canvas, pixel_p, packed_color);
                     else
@@ -807,7 +820,7 @@ static void Draw_Glyph(
     }
     #else
         
-    for(i32 y = y_min; y < y_max; ++y)
+    for(s32 y = y_min; y < y_max; ++y)
     {
         u32 sample_y = u32(y * inv_scale.y);
         if(sample_y >= font->char_height)
@@ -821,8 +834,8 @@ static void Draw_Glyph(
         u32 row_sub = (font->char_height - 1) - sample_y_sub;
         u8 glyph_row_sub = *(glyph + row_sub);
         
-        i32 pixel_y = floor_int_p.y + y;
-        for(i32 x = x_min; x < x_max; ++x)
+        s32 pixel_y = floor_int_p.y + y;
+        for(s32 x = x_min; x < x_max; ++x)
         {
             u32 sample_x = u32(x * inv_scale.x);
             u32 sample_x_sub = u32((x - 1) * inv_scale.x);
@@ -839,7 +852,7 @@ static void Draw_Glyph(
             f32 color_amount = Componentwise_Add(tf);
             if(color_amount > 0.01f)
             {
-                v2i pixel_p = {floor_int_p.x + x, pixel_y};
+                v2s pixel_p = {floor_int_p.x + x, pixel_y};
                 if(color_amount > 0.95f)
                     Set_Pixel_HZ(canvas, pixel_p, packed_color);
                 else
@@ -854,6 +867,8 @@ static void Draw_Glyph(
 
 static void Draw_Vertical_Line(Canvas* canvas, v2f pos, f32 height, Color color)
 {
+    Assert(canvas->buffer);
+    
     if(pos.x < 0 || pos.x >= canvas->dim.x)
         return;
     
@@ -865,49 +880,49 @@ static void Draw_Vertical_Line(Canvas* canvas, v2f pos, f32 height, Color color)
     
     v3f up_color = Unpack_Color(color);
     
-    i32 y_start = (i32)floor_p.y;
-    i32 y_end = (i32)(ceil_p.y + height) - 1;
+    s32 y_start = (s32)floor_p.y;
+    s32 y_end = (s32)(ceil_p.y + height) - 1;
     
-    y_start = Max(y_start, 0);
-    y_end = Min(y_end, i32(canvas->dim.y - 1));
+    y_start = Max(y_start, s32(0));
+    y_end = Min(y_end, s32(canvas->dim.y - 1));
     
     if(y_end <= y_start)
         return;
     
     if(fraction.x)
     {
-        for(i32 y = y_start + 1; y <= y_end - 1; ++y)
+        for(s32 y = y_start + 1; y <= y_end - 1; ++y)
         {
-            Blend_Pixel_With_Color(canvas, v2i{i32(floor_p.x), y}, up_color, inv_fraction.x);
-            Blend_Pixel_With_Color(canvas, v2i{i32(floor_p.x) + 1, y}, up_color, fraction.x);
+            Blend_Pixel_With_Color(canvas, v2s{s32(floor_p.x), y}, up_color, inv_fraction.x);
+            Blend_Pixel_With_Color(canvas, v2s{s32(floor_p.x) + 1, y}, up_color, fraction.x);
         }
         
         if(fraction.y)
         {
             // Bottom pixels
-            Blend_Pixel_With_Color(canvas, v2i{i32(floor_p.x), y_start}, up_color, inv_fraction.x * inv_fraction.y);
-            Blend_Pixel_With_Color(canvas, v2i{i32(floor_p.x) + 1, y_start}, up_color, fraction.x * inv_fraction.y);
+            Blend_Pixel_With_Color(canvas, v2s{s32(floor_p.x), y_start}, up_color, inv_fraction.x * inv_fraction.y);
+            Blend_Pixel_With_Color(canvas, v2s{s32(floor_p.x) + 1, y_start}, up_color, fraction.x * inv_fraction.y);
             
             // Bottom pixels
-            Blend_Pixel_With_Color(canvas, v2i{i32(floor_p.x), y_end}, up_color, inv_fraction.x * fraction.y);
-            Blend_Pixel_With_Color(canvas, v2i{i32(floor_p.x) + 1, y_end}, up_color, fraction.x * fraction.y);
+            Blend_Pixel_With_Color(canvas, v2s{s32(floor_p.x), y_end}, up_color, inv_fraction.x * fraction.y);
+            Blend_Pixel_With_Color(canvas, v2s{s32(floor_p.x) + 1, y_end}, up_color, fraction.x * fraction.y);
         }
     }
     else if(fraction.y)
     {
-        for(i32 y = y_start+ 1; y <= y_end - 1; ++y)
+        for(s32 y = y_start+ 1; y <= y_end - 1; ++y)
         {    
-            Set_Pixel(canvas, v2i{i32(floor_p.x), y}, color);
+            Set_Pixel(canvas, v2s{s32(floor_p.x), y}, color);
         }
         
-        Blend_Pixel_With_Color(canvas, v2i{i32(floor_p.x), y_start}, up_color, inv_fraction.y);
-        Blend_Pixel_With_Color(canvas, v2i{i32(floor_p.x), y_end}, up_color, fraction.y);
+        Blend_Pixel_With_Color(canvas, v2s{s32(floor_p.x), y_start}, up_color, inv_fraction.y);
+        Blend_Pixel_With_Color(canvas, v2s{s32(floor_p.x), y_end}, up_color, fraction.y);
     }
     else
     {
-        for(i32 y = y_start; y <= y_end; ++y)
+        for(s32 y = y_start; y <= y_end; ++y)
         {    
-            Set_Pixel(canvas, v2i{i32(floor_p.x), y}, color);
+            Set_Pixel(canvas, v2s{s32(floor_p.x), y}, color);
         }
     }
 }
@@ -918,8 +933,7 @@ static void Dim_Entire_Screen(Canvas* canvas, f32 s)
     // NOTE: This requires the buffer memory to be 4 byte alligned.
     
     Assert(s >= 0 && s < 1);
-    Begin_Timing_Block(scale_pixel);
-    
+
     #ifdef SSE
     u32 pixel_count = canvas->row_stride * canvas->dim.y;
     
@@ -950,7 +964,7 @@ static void Dim_Entire_Screen(Canvas* canvas, f32 s)
         wc3_ps = _mm_mul_ps(wc3_ps, wscale);
         wc4_ps = _mm_mul_ps(wc4_ps, wscale);
         
-        // Convert to i32 with truncation
+        // Convert to s32 with truncation
         wc1 = _mm_cvttps_epi32(wc1_ps);
         wc2 = _mm_cvttps_epi32(wc2_ps);
         wc3 = _mm_cvttps_epi32(wc3_ps);
@@ -975,7 +989,7 @@ static void Dim_Entire_Screen(Canvas* canvas, f32 s)
     {
         for(u32 x = 0; x < canvas->dim.x; ++x)
         {
-            v2i p = v2i{i32(x), i32(y)};
+            v2s p = v2s{s32(x), s32(y)};
             Color frame_buffer_color = Get_Pixel_HZ(canvas, p);
             
             v3f unpacked_color = Unpack_Color(frame_buffer_color);
@@ -988,81 +1002,6 @@ static void Dim_Entire_Screen(Canvas* canvas, f32 s)
         }
     }
     #endif
-    
-    End_Timing_Block(scale_pixel);
-}
-
-
-static void Draw_Image(Canvas* canvas, Image* img)
-{
-    Assert(img->buffer);
-    Assert(img->dim.x && img->dim.y);
-
-    for(i32 y = 0; y < img->dim.y; ++y)
-    {    
-        for(i32 x = 0; x < img->dim.x; ++x)
-        {
-            Color c = *((Color*)img->buffer + ((y * img->dim.x + x)));
-
-            if(c.a < 250)
-            {
-                v3f uc = Unpack_Color(c);
-                f32 f = f32(c.a) / 255.f;
-                Blend_Pixel_With_Color(canvas, v2i{x, y}, uc, f);
-            }
-            else if(c.a > 5)
-            {
-                Set_Pixel_HZ(canvas, v2i{x, y}, c);
-            }
-        }
-    }
-}
-
-
-static void Draw_Image_Badly(Canvas* canvas, Image* img, Rect rect)
-{
-    Rect draw_rect = rect;
-    if(!Verify_Rect_(canvas, &draw_rect))
-        return;
-    
-    i32 min_x, min_y, max_x, max_y;
-    min_x = (i32)Ceil(draw_rect.min.x);
-    min_y = (i32)Ceil(draw_rect.min.y);
-    max_x = (i32)Floor(draw_rect.max.x);
-    max_y = (i32)Floor(draw_rect.max.y);
-    
-    f32 w, h;
-    w = (rect.max.x - rect.min.x);
-    h = (rect.max.y - rect.min.y);
-    
-    i32 ux, uy;
-    ux = (i32)Round(rect.min.x - draw_rect.min.x);
-    uy = (i32)Round(rect.min.y - draw_rect.min.y);
-    
-    for(i32 y = min_y; y < max_y; ++y)
-    {
-        f32 fsy = f32((y - uy) - min_y) / h;
-        i32 isy = i32(Round((img->dim.y - 1) * fsy));
-        
-        for(i32 x = min_x; x < max_x; ++x)
-        {
-            f32 fsx = f32((x - ux) - min_x) / w;
-            i32 isx = i32(Round((img->dim.x - 1) * fsx));
-            
-            Color c = *((Color*)(img->buffer + ((isy * img->dim.x + isx) * 4)));
-            
-            if(c.a < 250)
-            {
-                v3f uc = Unpack_Color(c);
-                f32 f = f32(c.a) / 255.f;
-                Blend_Pixel_With_Color(canvas, v2i{x, y}, uc, f);
-            }
-            else if(c.a > 5)
-            {
-                Set_Pixel_HZ(canvas, v2i{x, y}, c);
-            }
-        }
-    }
 }
 
 
@@ -1073,15 +1012,15 @@ static void Resize_Image(Image* dest, Image* src)
     Assert(dest->dim.x && dest->dim.y);
     
     Color* dest_buffer = (Color*)dest->buffer;
-    for(i32 y = 0; y < dest->dim.y; ++y)
+    for(s32 y = 0; y < dest->dim.y; ++y)
     {        
         f32 fy = f32(y) / dest->dim.y;
-        i32 sy = i32(fy * src->dim.y);
+        s32 sy = s32(fy * src->dim.y);
         
-        for(i32 x = 0; x < dest->dim.x; ++x)
+        for(s32 x = 0; x < dest->dim.x; ++x)
         {
             f32 fx = f32(x) / dest->dim.x;
-            i32 sx = i32(fx * src->dim.x);
+            s32 sx = s32(fx * src->dim.x);
             
             u8* b = src->buffer + ((sy * src->dim.x + sx) * sizeof(Color));
             
@@ -1098,11 +1037,11 @@ static void Resize_Image(Image* dest, Image* src)
 
 static void Convert_From_RGB_To_Color(Image* img)
 {
-    i32 pixel_count = img->dim.x * img->dim.y;
+    s32 pixel_count = img->dim.x * img->dim.y;
     
-    i32 color_size = sizeof(Color);
+    s32 color_size = sizeof(Color);
     
-    for(i32 i = 0; i < pixel_count * color_size; i += color_size)
+    for(s32 i = 0; i < pixel_count * color_size; i += color_size)
     {
         u8* data = img->buffer + i;
         u8 r = *(data + 0);
@@ -1118,9 +1057,9 @@ static void Convert_From_RGB_To_Color(Image* img)
 
 static void Convert_From_RGB_To_Color_And_Flip_Y(Image* img)
 {
-    for(i32 y = 0; y < (i32)Ceil(f32(img->dim.y) / 2.f); ++y)
+    for(s32 y = 0; y < (s32)Ceil(f32(img->dim.y) / 2.f); ++y)
     {
-        for(i32 x = 0; x < img->dim.x; ++x)
+        for(s32 x = 0; x < img->dim.x; ++x)
         {
             Color* l1 = (Color*)img->buffer + (y * img->dim.x + x);
             Color* l2 = (Color*)img->buffer + ((img->dim.y - 1 - y) * img->dim.x + x);
@@ -1134,13 +1073,28 @@ static void Convert_From_RGB_To_Color_And_Flip_Y(Image* img)
 }
 
 
+static void Pre_Multiply_Aplha_In_Image(Image* img)
+{
+    u32 pixel_count = img->dim.x * img->dim.y;
+    
+    for(u32 i = 0; i < pixel_count; ++i)
+    {
+        Color* color_u32 = ((Color*)img->buffer) + i;
+        v4f color_f32 = Unpack_Color_With_Alpha(*color_u32) / 255;
+        color_f32.rgb = color_f32.rgb * color_f32.a;
+        
+        *color_u32 = Pack_Color(color_f32 * 255);
+    }
+}
+
+
 static void Mult_Alpha_On_Image(Image* img, f32 m)
 {
-    i32 pixel_count = img->dim.x * img->dim.y;
+    s32 pixel_count = img->dim.x * img->dim.y;
     
-    i32 color_size = sizeof(Color);
+    s32 color_size = sizeof(Color);
     
-    for(i32 i = 0; i < pixel_count * color_size; i += color_size)
+    for(s32 i = 0; i < pixel_count * color_size; i += color_size)
     {
         Color* c = (Color*)(img->buffer + i);
         
@@ -1152,148 +1106,285 @@ static void Mult_Alpha_On_Image(Image* img, f32 m)
 }
 
 
-static void Draw_Image(Canvas* canvas, Image* img, Rect rect)
+static void Draw_Image(Canvas* canvas, Image* img)
 {
+    Assert(canvas->buffer);
+    Assert(img->buffer);
+    Assert(img->dim.x && img->dim.y);
+
+    for(s32 y = 0; y < img->dim.y; ++y)
+    {
+        if(u32(y) >= canvas->dim.y)
+            break;
+        
+        for(s32 x = 0; x < img->dim.x; ++x)
+        {
+            if(u32(x) >= canvas->dim.x)
+                break;
+            
+            Color c = *((Color*)img->buffer + ((y * img->row_stride + x)));
+
+            if(c.a < 250)
+            {
+                v3f uc = Unpack_Color(c);
+                f32 f = f32(c.a) / 255.f;
+                Blend_Pixel_With_Color(canvas, v2s{x, y}, uc, f);
+            }
+            else if(c.a > 5)
+            {
+                Set_Pixel_HZ(canvas, v2s{x, y}, c);
+            }
+        }
+    }
+}
+
+
+static void Paste_Image(Canvas* canvas, Image* img, v2s offset)
+{
+    Assert(img->buffer);
+    Assert(img->dim.x && img->dim.y);
+
+    for(s32 y = 0; y < img->dim.y; ++y)
+    {
+        s32 yo = y + offset.y;
+        
+        if(u32(yo) >= canvas->dim.y)
+            break;
+        
+        for(s32 x = 0; x < img->dim.x; ++x)
+        {
+            s32 xo = x + offset.x;
+            if(u32(xo) >= canvas->dim.x)
+                break;
+            
+            Color c = *((Color*)img->buffer + ((y * img->row_stride + x)));
+            Set_Pixel_HZ(canvas, v2s{xo, yo}, c);
+        }
+    }
+}
+
+
+static inline void Additive_Blend(Canvas* canvas, v2s p, v4f c)
+{
+    Color buffer_color_packed = Get_Pixel_HZ(canvas, p);
+    v4f bc = Unpack_Color_With_Alpha(buffer_color_packed);
+    
+    f32 rca = c.a / 255.f;
+    f32 inv_rca = 1.f - rca;
+    f32 rba = bc.a / 255.f;
+    f32 inv_rba = 1.f - rba;
+    
+    #if 0
+    f32 a = c.a;
+    f32 r = (inv_rca * rba * bc.r) + (c.r * (rca + (inv_rca - (inv_rca * rba))));
+    f32 g = (inv_rca * rba * bc.g) + (c.g * (rca + (inv_rca - (inv_rca * rba))));
+    f32 b = (inv_rca * rba * bc.b) + (c.b * (rca + (inv_rca - (inv_rca * rba))));
+    #endif
+    
+    #if 0
+    f32 a = c.a;
+    f32 r = (inv_rca * bc.r) + (c.r * rca);
+    f32 g = (inv_rca * bc.g) + (c.g * rca);
+    f32 b = (inv_rca * bc.b) + (c.b * rca);
+    #endif
+    
+    f32 a = c.a;
+    f32 r = bc.r + (c.r * rca);
+    f32 g = bc.g + (c.g * rca);
+    f32 b = bc.b + (c.b * rca);
+    
+    Color c1 = Make_Color(u8(r), u8(g), u8(b), u8(a));
+    Set_Pixel_HZ(canvas, p, c1);
+}
+
+
+static inline void Pre_Mult_Alpha_Color_Blend(Canvas* canvas, v2s p, v4f c)
+{
+    Color buffer_color_packed = Get_Pixel_HZ(canvas, p);
+    v4f bc = Unpack_Color_With_Alpha(buffer_color_packed);
+    
+    f32 rca = c.a / 255.f;
+    f32 inv_rca = 1.f - rca;
+    f32 rba = bc.a / 255.f;
+    f32 inv_rba = 1.f - rba;
+    
+    f32 a = 255.0f * (rca + rba - rca * rba);
+    f32 r = inv_rca * bc.r + c.r;
+    f32 g = inv_rca * bc.g + c.g;
+    f32 b = inv_rca * bc.b + c.b;
+    
+    Color c1 = Make_Color(u8(r), u8(g), u8(b), u8(a));
+    Set_Pixel_HZ(canvas, p, c1);
+}
+
+
+static void Draw_Image(Canvas* canvas, Rect rect, Image* img)
+{
+    Assert(canvas->buffer);
+    Assert(img->dim.x && img->dim.y);
+    
+    if(!img->buffer)
+    {
+        Draw_Filled_Rect(canvas, rect, MAGENTA);
+        return;
+    }
+    
     // TODO: SIMD this routine.
     
     Rect _rect = rect;
     if(!Verify_Rect_(canvas, &_rect))
         return;
     
-    i32 xclip = i32(Ceil(_rect.min.x) - Ceil(rect.min.x));
-    i32 yclip = i32(Ceil(_rect.min.y) - Ceil(rect.min.y));
+    s32 dim_x_s1 = img->dim.x - 1;
+    s32 dim_y_s1 = img->dim.y - 1;
+    f32 dim_x_s1f = f32(dim_x_s1);
+    f32 dim_y_s1f = f32(dim_y_s1);
+    
+    s32 xclip = s32(_rect.min.x - rect.min.x);
+    s32 yclip = s32(_rect.min.y - rect.min.y);
     
     f32 w = rect.max.x - rect.min.x;
     f32 h = rect.max.y - rect.min.y;
     
-    i32 x_min = (i32)Ceil(_rect.min.x);
-    i32 y_min = (i32)Ceil(_rect.min.y);
+    s32 x_min = (s32)Ceil(_rect.min.x);
+    s32 y_min = (s32)Ceil(_rect.min.y);
     
-    i32 x_max = (i32)Floor(_rect.max.x);
-    i32 y_max = (i32)Floor(_rect.max.y);
+    s32 x_max = (s32)Floor(_rect.max.x);
+    s32 y_max = (s32)Floor(_rect.max.y);
     
-    // NOTE: Using the unclipped min to get the fractional part into the internal pixels.
-    f32 fx_min = 1.f - (rect.min.x - f32(i32(rect.min.x)));
-    f32 fy_min = 1.f - (rect.min.y - f32(i32(rect.min.y)));
-    
-    f32 fx_max = _rect.max.x - f32(i32(_rect.max.x));
-    f32 fy_max = _rect.max.y - f32(i32(_rect.max.y));
-    
-    if(fx_min < 1.f)
-    {
-        if(rect.min.x > 0)
-        {
-            // Draw left ribbon.
-            for(i32 y = y_min; y < y_max; ++y)
-            {
-                i32 ry = y - y_min + yclip;
-                f32 v = (ry) / h;
-                f32 sy = v * f32(img->dim.y - 1);
-                
-                Assert(i32(sy) + 1 < img->dim.y);
-            
-                Color* c1 = (Color*)img->buffer + i32(sy) * img->dim.x;
-                Color* c2 = c1 + img->dim.x;
-                
-                v4f c1_up = Unpack_Color_With_Alpha(*c1);
-                v4f c2_up = Unpack_Color_With_Alpha(*c2);
-                
-                f32 yblend = (sy - f32(i32(sy)));
-                v4f yb = Lerp(c1_up, c2_up, yblend);
-                
-                v2i p = v2i{x_min - 1, y};
-                f32 f = f32(yb.a) / 255.f * fx_min;
-                Blend_Pixel_With_Color(canvas, p, yb.rgb, f);
-            }            
-        }
-    }
+    // Fraction of the expanded area inside the rect.
+    f32 fx_min = rect.min.x - f32(s32(rect.min.x));
+    f32 fy_min = rect.min.y - f32(s32(rect.min.y));
+    if(fx_min > 0)
+        fx_min = 1.f - fx_min;
     else
-    {
-        fx_min = 0;
-    }
+        fx_min = Abs(fx_min);
     
-    if(fy_min < 1.f)
-    {
-        if(rect.min.y > 0)
-        {
-            // Draw bottom ribbon.
-            for(i32 x = x_min; x < x_max; ++x)
-            {
-                i32 rx = x - x_min + xclip;
-                f32 u = (rx) / w;
-                f32 sx = u * f32(img->dim.x - 1);
-                
-                Assert(i32(sx) + 1 < img->dim.x);
-                
-                Color* c1 = (Color*)img->buffer + i32(sx);
-                Color* c2 = c1 + 1;
-                
-                v4f c1_up = Unpack_Color_With_Alpha(*c1);
-                v4f c2_up = Unpack_Color_With_Alpha(*c2);
-                
-                f32 xblend = (sx - f32(i32(sx)));
-                v4f xb  = Lerp(c1_up, c2_up, xblend);
-                
-                v2i p = v2i{x, y_min - 1};
-                f32 f = f32(xb.a) / 255.f * fy_min;
-                Blend_Pixel_With_Color(canvas, p, xb.rgb, f);
-            }
-        }
-    }
+    if(fy_min > 0)
+        fy_min = 1.f - fy_min;
     else
-    {
-        fy_min = 0;
-    }
+        fy_min = Abs(fy_min);
     
-    i32 dim_x_s1 = img->dim.x - 1;
-    i32 dim_y_s1 = img->dim.y - 1;
-    if(fx_max)
-    {
-        // Draw right ribbon.
-        for(i32 y = y_min; y < y_max; ++y)
+    f32 fx_max = rect.max.x - f32(s32(rect.max.x));
+    f32 fy_max = rect.max.y - f32(s32(rect.max.y));
+    if(fx_min < 0)
+        fx_max = 1.f - fx_max;
+    else
+        fx_max = Abs(fx_max);
+    
+    if(fy_min < 0)
+        fy_max = 1.f - fy_max;
+    else
+        fy_max = Abs(fy_max);
+    
+    
+    Assert(fx_min <= 1.f);
+    Assert(fy_min <= 1.f);
+    Assert(fx_max <= 1.f);
+    Assert(fy_max <= 1.f);
+
+    #if 1
+    if(fx_min < 1.f && x_min - 1 >= 0)
+    {        
+        // Draw left ribbon.
+        for(s32 y = y_min; y < y_max; ++y)
         {
-            i32 ry = y - y_min + yclip;
+            s32 ry = y - y_min + yclip;
             f32 v = (ry) / h;
-            f32 sy = v * f32(img->dim.y - 1);
+            f32 sy = v * f32(img->dim.y);
             
-            Assert(i32(sy) + 1 < img->dim.y);
-            
-            Color* c1 = (Color*)img->buffer + (i32(sy) * img->dim.x + dim_x_s1);
-            Color* c2 = c1 + img->dim.x;
+            Assert(s32(sy) < img->dim.y);
+        
+            Color* c1 = (Color*)img->buffer + s32(sy) * img->row_stride;
+            Color* c2 = c1 + img->row_stride;
             
             v4f c1_up = Unpack_Color_With_Alpha(*c1);
             v4f c2_up = Unpack_Color_With_Alpha(*c2);
             
-            f32 yblend = (sy - f32(i32(sy)));
+            f32 yblend = (sy - f32(s32(sy)));
             v4f yb = Lerp(c1_up, c2_up, yblend);
             
-            v2i p = v2i{x_max, y};
-            f32 f = f32(yb.a) / 255.f * fx_max;
+            v2s p = v2s{x_min - 1, y};
+            f32 f = f32(yb.a) / 255.f * fx_min;
             Blend_Pixel_With_Color(canvas, p, yb.rgb, f);
         }
     }
     
-    if(fy_max)
+    if(fy_min < 1.f && y_min - 1 >= 0)
     {
-        // Draw top ribbon.
-        for(i32 x = x_min; x < x_max; ++x)
+        // Draw bottom ribbon.
+        for(s32 x = x_min; x < x_max; ++x)
         {
-            i32 rx = x - x_min + xclip;
+            s32 rx = x - x_min + xclip;
             f32 u = (rx) / w;
-            f32 sx = u * f32(img->dim.x - 1);
+            f32 sx = u * f32(img->dim.x);
             
-            Assert(i32(sx) + 1 < img->dim.x);
+            Assert(s32(sx) < img->dim.x);
             
-            Color* c1 = (Color*)img->buffer + (dim_y_s1 * img->dim.x  + i32(sx));
+            Color* c1 = (Color*)img->buffer + s32(sx);
             Color* c2 = c1 + 1;
             
             v4f c1_up = Unpack_Color_With_Alpha(*c1);
             v4f c2_up = Unpack_Color_With_Alpha(*c2);
             
-            f32 xblend = (sx - f32(i32(sx)));
+            f32 xblend = (sx - f32(s32(sx)));
             v4f xb  = Lerp(c1_up, c2_up, xblend);
             
-            v2i p = v2i{x, y_max};
+            v2s p = v2s{x, y_min - 1};
+            f32 f = f32(xb.a) / 255.f * fy_min;
+            Blend_Pixel_With_Color(canvas, p, xb.rgb, f);
+        }
+    }
+
+    
+    
+    if(fx_max && u32(x_max) < canvas->dim.x)
+    {
+        // Draw right ribbon.
+        for(s32 y = y_min; y < y_max; ++y)
+        {
+            s32 ry = y - y_min + yclip;
+            f32 v = (ry) / h;
+            f32 sy = v * f32(img->dim.y);
+            
+            Assert(s32(sy) < img->dim.y);
+            
+            Color* c1 = (Color*)img->buffer + (s32(sy) * img->row_stride + dim_x_s1);
+            Color* c2 = c1 + img->row_stride;
+            
+            v4f c1_up = Unpack_Color_With_Alpha(*c1);
+            v4f c2_up = Unpack_Color_With_Alpha(*c2);
+            
+            f32 yblend = (sy - f32(s32(sy)));
+            v4f yb = Lerp(c1_up, c2_up, yblend);
+            
+            v2s p = v2s{x_max, y};
+            f32 f = f32(yb.a) / 255.f * fx_max;
+            Blend_Pixel_With_Color(canvas, p, yb.rgb, f);
+        }
+    }
+    
+    if(fy_max && u32(y_max) < canvas->dim.y)
+    {
+        // Draw top ribbon.
+        for(s32 x = x_min; x < x_max; ++x)
+        {
+            s32 rx = x - x_min + xclip;
+            f32 u = (rx) / w;
+            f32 sx = u * f32(img->dim.x);
+            
+            Assert(s32(sx) < img->dim.x);
+            
+            Color* c1 = (Color*)img->buffer + (dim_y_s1 * img->row_stride + s32(sx));
+            Color* c2 = c1 + 1;
+            
+            v4f c1_up = Unpack_Color_With_Alpha(*c1);
+            v4f c2_up = Unpack_Color_With_Alpha(*c2);
+            
+            f32 xblend = (sx - f32(s32(sx)));
+            v4f xb  = Lerp(c1_up, c2_up, xblend);
+            
+            v2s p = v2s{x, y_max};
             f32 f = f32(xb.a) / 255.f * fy_max;
             Blend_Pixel_With_Color(canvas, p, xb.rgb, f);
         }
@@ -1305,7 +1396,7 @@ static void Draw_Image(Canvas* canvas, Image* img, Rect rect)
         Color* c1 = (Color*)img->buffer;
         v4f c1_up = Unpack_Color_With_Alpha(*c1);
         
-        v2i p = v2i{x_min - 1, y_min - 1};
+        v2s p = v2s{x_min - 1, y_min - 1};
         if(Is_Point_On_Canvas(canvas, p))
         {
             f32 fa = fx_min * fy_min;
@@ -1317,10 +1408,10 @@ static void Draw_Image(Canvas* canvas, Image* img, Rect rect)
     // Draw top left corner
     if(fy_min > 0 && fx_min > 0)
     {
-        Color* c1 = (Color*)img->buffer + (dim_y_s1 * img->dim.x);
+        Color* c1 = (Color*)img->buffer + (dim_y_s1 * img->row_stride);
         v4f c1_up = Unpack_Color_With_Alpha(*c1);
         
-        v2i p = v2i{x_min - 1, y_max};
+        v2s p = v2s{x_min - 1, y_max};
         if(Is_Point_On_Canvas(canvas, p))
         {
             f32 fa = fx_min * fy_max;
@@ -1335,7 +1426,7 @@ static void Draw_Image(Canvas* canvas, Image* img, Rect rect)
         Color* c1 = (Color*)img->buffer + dim_x_s1;
         v4f c1_up = Unpack_Color_With_Alpha(*c1);
         
-        v2i p = v2i{x_max, y_min - 1};
+        v2s p = v2s{x_max, y_min - 1};
         if(Is_Point_On_Canvas(canvas, p))
         {
             f32 fa =  fx_max * fy_min;
@@ -1347,10 +1438,10 @@ static void Draw_Image(Canvas* canvas, Image* img, Rect rect)
     // Draw top right corner
     if(fy_min > 0 && fx_max > 0)
     {
-        Color* c1 = (Color*)img->buffer + (dim_y_s1 * img->dim.x +  dim_x_s1);
+        Color* c1 = (Color*)img->buffer + (dim_y_s1 * img->row_stride +  dim_x_s1);
         v4f c1_up = Unpack_Color_With_Alpha(*c1);
         
-        v2i p = v2i{x_max, y_max};
+        v2s p = v2s{x_max, y_max};
         if(Is_Point_On_Canvas(canvas, p))
         {
             f32 fa =  fx_max * fy_max;
@@ -1358,53 +1449,97 @@ static void Draw_Image(Canvas* canvas, Image* img, Rect rect)
             Blend_Pixel_With_Color(canvas, p, c1_up.rgb, f);
         }
     }
+    #endif
+    
     
     #if 1
     // Draw internal whole pixels.
-    for(i32 y = y_min; y < y_max; ++y)
+    for(s32 y = y_min; y < y_max; ++y)
     {
-        i32 ry = y - y_min + yclip;
+        s32 ry = y - y_min + yclip;
         f32 v = (ry + fy_min) / h;
-        f32 sy = v * f32(img->dim.y - 1);
-        f32 yblend = (sy - f32(i32(sy)));
+        f32 sy = v * f32(img->dim.y);
+        f32 yblend = (sy - f32(s32(sy)));
         
-        Assert(i32(sy) + 1 < img->dim.y);
+        Assert(s32(sy) < img->dim.y);
         
-        for(i32 x = x_min; x < x_max; ++x)
+        for(s32 x = x_min; x < x_max; ++x)
         {
-            Start_Scope_Timer(img2_pixel);
-            
-            i32 rx = x - x_min + xclip;
+            s32 rx = x - x_min + xclip;
             f32 u = (rx + fx_min) / w;
-            f32 sx = u * f32(img->dim.x - 1);
+            f32 sx = u * f32(img->dim.x);
             
-            Assert(i32(sx) + 1 < img->dim.x);
+            Assert(s32(sx) < img->dim.x);
             
-            Color* c1 = (Color*)img->buffer + i32(sy) * img->dim.x + i32(sx);
-            Color* c2 = c1 + 1;
-            Color* c3 = c1 + img->dim.x;
-            Color* c4 = c3 + 1;
+            v4f final_color = {};
             
-            v4f c1_up = Unpack_Color_With_Alpha(*c1);
-            v4f c2_up = Unpack_Color_With_Alpha(*c2);
-            v4f c3_up = Unpack_Color_With_Alpha(*c3);
-            v4f c4_up = Unpack_Color_With_Alpha(*c4);
-            
-            f32 xblend = (sx - f32(i32(sx)));
-         
-            v4f xb1 = Lerp(c1_up, c2_up, xblend);
-            v4f xb2 = Lerp(c3_up, c4_up, xblend);
-            v4f yb  = Lerp(xb1, xb2, yblend);
-            
-            v2i p = v2i{x, y};
-            if(yb.a < 250.f)
+            // Don't sample up!
+            if(sy + 1 >= img->dim.y && sx + 1 < img->dim.x)
             {
-                f32 f = f32(yb.a) / 255.f;
-                Blend_Pixel_With_Color(canvas, p, yb.rgb, f);
+                Assert(sx + 1 < img->dim.x);
+                
+                Color* c1 = (Color*)img->buffer + s32(sy) * img->row_stride + s32(sx);
+                Color* c2 = c1 + 1;
+                
+                v4f c1_up = Unpack_Color_With_Alpha(*c1);
+                v4f c2_up = Unpack_Color_With_Alpha(*c2);
+                
+                f32 xblend = (sx - f32(s32(sx)));
+                final_color = Lerp(c1_up, c2_up, xblend);
             }
-            else if(yb.a > 5.f)
+            
+            // Don't samle right!
+            else if(sx + 1 >= img->dim.x && sy + 1 < img->dim.y)
             {
-                Color c = Pack_Color(yb);
+                Assert(sy + 1 < img->dim.y);
+                
+                Color* c1 = (Color*)img->buffer + s32(sy) * img->row_stride + s32(sx);
+                Color* c2 = c1 + img->row_stride;
+                
+                v4f c1_up = Unpack_Color_With_Alpha(*c1);
+                v4f c2_up = Unpack_Color_With_Alpha(*c2);
+             
+                final_color  = Lerp(c1_up, c2_up, yblend);
+            }
+            
+            // Don't sample up or right!
+            else if(sx + 1 >= img->dim.x && sy + 1 >= img->dim.y)
+            {
+                Color* c1 = (Color*)img->buffer + s32(sy) * img->row_stride + s32(sx);
+                final_color = Unpack_Color_With_Alpha(*c1);
+            }
+            
+            // Sample up and right.
+            else
+            {
+                Assert(sy + 1 < img->dim.y);
+                Assert(sx + 1 < img->dim.x);
+                
+                Color* c1 = (Color*)img->buffer + s32(sy) * img->row_stride + s32(sx);
+                Color* c2 = c1 + 1;
+                Color* c3 = c1 + img->row_stride;
+                Color* c4 = c3 + 1;
+                
+                v4f c1_up = Unpack_Color_With_Alpha(*c1);
+                v4f c2_up = Unpack_Color_With_Alpha(*c2);
+                v4f c3_up = Unpack_Color_With_Alpha(*c3);
+                v4f c4_up = Unpack_Color_With_Alpha(*c4);
+                
+                f32 xblend = (sx - f32(s32(sx)));
+             
+                v4f xb1 = Lerp(c1_up, c2_up, xblend);
+                v4f xb2 = Lerp(c3_up, c4_up, xblend);
+                final_color  = Lerp(xb1, xb2, yblend);
+            }
+            
+            v2s p = v2s{x, y};
+            if(final_color.a < 250.f)
+            {
+                Pre_Mult_Alpha_Color_Blend(canvas, p, final_color);
+            }
+            else if(final_color.a > 5.f)
+            {
+                Color c = Pack_Color(final_color);
                 Set_Pixel_HZ(canvas, p, c);
             }
         }
@@ -1415,284 +1550,18 @@ static void Draw_Image(Canvas* canvas, Image* img, Rect rect)
 
 static void Draw_Image(Canvas* canvas, Image* img, Rect rect, v3f color_mult)
 {
-    // TODO: SIMD this routine.
-    
-    Rect _rect = rect;
-    if(!Verify_Rect_(canvas, &_rect))
-        return;
-    
-    i32 xclip = i32(Ceil(_rect.min.x) - Ceil(rect.min.x));
-    i32 yclip = i32(Ceil(_rect.min.y) - Ceil(rect.min.y));
-    
-    f32 w = rect.max.x - rect.min.x;
-    f32 h = rect.max.y - rect.min.y;
-    
-    i32 x_min = (i32)Ceil(_rect.min.x);
-    i32 y_min = (i32)Ceil(_rect.min.y);
-    
-    i32 x_max = (i32)Floor(_rect.max.x);
-    i32 y_max = (i32)Floor(_rect.max.y);
-    
-    // NOTE: Using the unclipped min to get the fractional part into the internal pixels.
-    f32 fx_min = 1.f - (rect.min.x - f32(i32(rect.min.x)));
-    f32 fy_min = 1.f - (rect.min.y - f32(i32(rect.min.y)));
-    
-    f32 fx_max = _rect.max.x - f32(i32(_rect.max.x));
-    f32 fy_max = _rect.max.y - f32(i32(_rect.max.y));
-    
-    if(fx_min < 1.f)
-    {
-        if(rect.min.x > 0)
-        {
-            // Draw left ribbon.
-            for(i32 y = y_min; y < y_max; ++y)
-            {
-                i32 ry = y - y_min + yclip;
-                f32 v = (ry) / h;
-                f32 sy = v * f32(img->dim.y - 1);
-                
-                Assert(i32(sy) + 1 < img->dim.y);
-            
-                Color* c1 = (Color*)img->buffer + i32(sy) * img->dim.x;
-                Color* c2 = c1 + img->dim.x;
-                
-                v4f c1_up = Unpack_Color_With_Alpha(*c1);
-                c1_up.rgb = Hadamar_Product(c1_up.rgb, color_mult);
-                
-                v4f c2_up = Unpack_Color_With_Alpha(*c2);
-                c2_up.rgb = Hadamar_Product(c2_up.rgb, color_mult);
-                
-                f32 yblend = (sy - f32(i32(sy)));
-                v4f yb = Lerp(c1_up, c2_up, yblend);
-                
-                v2i p = v2i{x_min - 1, y};
-                f32 f = f32(yb.a) / 255.f * fx_min;
-                Blend_Pixel_With_Color(canvas, p, yb.rgb, f);
-            }            
-        }
-    }
-    else
-    {
-        fx_min = 0;
-    }
-    
-    if(fy_min < 1.f)
-    {
-        if(rect.min.y > 0)
-        {
-            // Draw bottom ribbon.
-            for(i32 x = x_min; x < x_max; ++x)
-            {
-                i32 rx = x - x_min + xclip;
-                f32 u = (rx) / w;
-                f32 sx = u * f32(img->dim.x - 1);
-                
-                Assert(i32(sx) + 1 < img->dim.x);
-                
-                Color* c1 = (Color*)img->buffer + i32(sx);
-                Color* c2 = c1 + 1;
-                
-                v4f c1_up = Unpack_Color_With_Alpha(*c1);
-                c1_up.rgb = Hadamar_Product(c1_up.rgb, color_mult);
-                
-                v4f c2_up = Unpack_Color_With_Alpha(*c2);
-                c2_up.rgb = Hadamar_Product(c2_up.rgb, color_mult);
-                
-                f32 xblend = (sx - f32(i32(sx)));
-                v4f xb  = Lerp(c1_up, c2_up, xblend);
-                
-                v2i p = v2i{x, y_min - 1};
-                f32 f = f32(xb.a) / 255.f * fy_min;
-                Blend_Pixel_With_Color(canvas, p, xb.rgb, f);
-            }
-        }
-    }
-    else
-    {
-        fy_min = 0;
-    }
-    
-    i32 dim_x_s1 = img->dim.x - 1;
-    i32 dim_y_s1 = img->dim.y - 1;
-    if(fx_max)
-    {
-        // Draw right ribbon.
-        for(i32 y = y_min; y < y_max; ++y)
-        {
-            i32 ry = y - y_min + yclip;
-            f32 v = (ry) / h;
-            f32 sy = v * f32(img->dim.y - 1);
-            
-            Assert(i32(sy) + 1 < img->dim.y);
-            
-            Color* c1 = (Color*)img->buffer + (i32(sy) * img->dim.x + dim_x_s1);
-            Color* c2 = c1 + img->dim.x;
-            
-            v4f c1_up = Unpack_Color_With_Alpha(*c1);
-            c1_up.rgb = Hadamar_Product(c1_up.rgb, color_mult);
-            
-            v4f c2_up = Unpack_Color_With_Alpha(*c2);
-            c2_up.rgb = Hadamar_Product(c2_up.rgb, color_mult);
-            
-            f32 yblend = (sy - f32(i32(sy)));
-            v4f yb = Lerp(c1_up, c2_up, yblend);
-            
-            v2i p = v2i{x_max, y};
-            f32 f = f32(yb.a) / 255.f * fx_max;
-            Blend_Pixel_With_Color(canvas, p, yb.rgb, f);
-        }
-    }
-    
-    if(fy_max)
-    {
-        // Draw top ribbon.
-        for(i32 x = x_min; x < x_max; ++x)
-        {
-            i32 rx = x - x_min + xclip;
-            f32 u = (rx) / w;
-            f32 sx = u * f32(img->dim.x - 1);
-            
-            Assert(i32(sx) + 1 < img->dim.x);
-            
-            Color* c1 = (Color*)img->buffer + (dim_y_s1 * img->dim.x  + i32(sx));
-            Color* c2 = c1 + 1;
-            
-            v4f c1_up = Unpack_Color_With_Alpha(*c1);
-            c1_up.rgb = Hadamar_Product(c1_up.rgb, color_mult);
-            
-            v4f c2_up = Unpack_Color_With_Alpha(*c2);
-            c2_up.rgb = Hadamar_Product(c2_up.rgb, color_mult);
-            
-            f32 xblend = (sx - f32(i32(sx)));
-            v4f xb  = Lerp(c1_up, c2_up, xblend);
-            
-            v2i p = v2i{x, y_max};
-            f32 f = f32(xb.a) / 255.f * fy_max;
-            Blend_Pixel_With_Color(canvas, p, xb.rgb, f);
-        }
-    }
-    
-    // Draw bottom left corner
-    if(fy_min > 0 && fx_min > 0)
-    {
-        Color* c1 = (Color*)img->buffer;
-        v4f c1_up = Unpack_Color_With_Alpha(*c1);
-        c1_up.rgb = Hadamar_Product(c1_up.rgb, color_mult);
-        
-        v2i p = v2i{x_min - 1, y_min - 1};
-        if(Is_Point_On_Canvas(canvas, p))
-        {
-            f32 fa = fx_min * fy_min;
-            f32 f = f32(c1_up.a) / 255.f * fa;
-            Blend_Pixel_With_Color(canvas, p, c1_up.rgb, f);
-        }
-    }
-    
-    // Draw top left corner
-    if(fy_min > 0 && fx_min > 0)
-    {
-        Color* c1 = (Color*)img->buffer + (dim_y_s1 * img->dim.x);
-        v4f c1_up = Unpack_Color_With_Alpha(*c1);
-        c1_up.rgb = Hadamar_Product(c1_up.rgb, color_mult);
-        
-        v2i p = v2i{x_min - 1, y_max};
-        if(Is_Point_On_Canvas(canvas, p))
-        {
-            f32 fa = fx_min * fy_max;
-            f32 f = f32(c1_up.a) / 255.f * fa;
-            Blend_Pixel_With_Color(canvas, p, c1_up.rgb, f);
-        }
-    }
-    
-    // Draw bottom right corner
-    if(fy_min > 0 && fx_max > 0)
-    {
-        Color* c1 = (Color*)img->buffer + dim_x_s1;
-        v4f c1_up = Unpack_Color_With_Alpha(*c1);
-        c1_up.rgb = Hadamar_Product(c1_up.rgb, color_mult);
-        
-        v2i p = v2i{x_max, y_min - 1};
-        if(Is_Point_On_Canvas(canvas, p))
-        {
-            f32 fa =  fx_max * fy_min;
-            f32 f = f32(c1_up.a) / 255.f * fa;
-            Blend_Pixel_With_Color(canvas, p, c1_up.rgb, f);
-        }
-    }
-    
-    // Draw top right corner
-    if(fy_min > 0 && fx_max > 0)
-    {
-        Color* c1 = (Color*)img->buffer + (dim_y_s1 * img->dim.x +  dim_x_s1);
-        v4f c1_up = Unpack_Color_With_Alpha(*c1);
-        c1_up.rgb = Hadamar_Product(c1_up.rgb, color_mult);
-        
-        v2i p = v2i{x_max, y_max};
-        if(Is_Point_On_Canvas(canvas, p))
-        {
-            f32 fa =  fx_max * fy_max;
-            f32 f = f32(c1_up.a) / 255.f * fa;
-            Blend_Pixel_With_Color(canvas, p, c1_up.rgb, f);
-        }
-    }
-    
-    #if 1
-    // Draw internal whole pixels.
-    for(i32 y = y_min; y < y_max; ++y)
-    {
-        i32 ry = y - y_min + yclip;
-        f32 v = (ry + fy_min) / h;
-        f32 sy = v * f32(img->dim.y - 1);
-        f32 yblend = (sy - f32(i32(sy)));
-        
-        Assert(i32(sy) + 1 < img->dim.y);
-        
-        for(i32 x = x_min; x < x_max; ++x)
-        {
-            Start_Scope_Timer(img2_pixel);
-            
-            i32 rx = x - x_min + xclip;
-            f32 u = (rx + fx_min) / w;
-            f32 sx = u * f32(img->dim.x - 1);
-            
-            Assert(i32(sx) + 1 < img->dim.x);
-            
-            Color* c1 = (Color*)img->buffer + i32(sy) * img->dim.x + i32(sx);
-            Color* c2 = c1 + 1;
-            Color* c3 = c1 + img->dim.x;
-            Color* c4 = c3 + 1;
-            
-            v4f c1_up = Unpack_Color_With_Alpha(*c1);
-            c1_up.rgb = Hadamar_Product(c1_up.rgb, color_mult);
-            
-            v4f c2_up = Unpack_Color_With_Alpha(*c2);
-            c2_up.rgb = Hadamar_Product(c2_up.rgb, color_mult);
-            
-            v4f c3_up = Unpack_Color_With_Alpha(*c3);
-            c3_up.rgb = Hadamar_Product(c3_up.rgb, color_mult);
-            
-            v4f c4_up = Unpack_Color_With_Alpha(*c4);
-            c4_up.rgb = Hadamar_Product(c4_up.rgb, color_mult);
-            
-            f32 xblend = (sx - f32(i32(sx)));
-         
-            v4f xb1 = Lerp(c1_up, c2_up, xblend);
-            v4f xb2 = Lerp(c3_up, c4_up, xblend);
-            v4f yb  = Lerp(xb1, xb2, yblend);
-            
-            v2i p = v2i{x, y};
-            if(yb.a < 250.f)
-            {
-                f32 f = f32(yb.a) / 255.f;
-                Blend_Pixel_With_Color(canvas, p, yb.rgb, f);
-            }
-            else if(yb.a > 5.f)
-            {
-                Color c = Pack_Color(yb);
-                Set_Pixel_HZ(canvas, p, c);
-            }
-        }
-    }
-    #endif
+    Draw_Image(canvas, rect, img);
 }
 
+
+static void Draw_Sub_Image(Canvas* canvas, Rect rect, Rect crop, Image* image)
+{
+    Assert(image->buffer);
+    
+    Image temp_image = *image;
+    temp_image.dim = Get_Rect_Dimensions(crop).As<s32>();
+
+    s32 offset = temp_image.row_stride * s32(crop.min.y);
+    temp_image.buffer = temp_image.buffer + (offset + s32(crop.min.x)) * sizeof(Color);
+    Draw_Image(canvas, rect, &temp_image);    
+}

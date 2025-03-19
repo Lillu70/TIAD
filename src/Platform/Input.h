@@ -102,7 +102,8 @@ enum class Key_Code
     COUNT
 };
 
-static const char* s_key_names[] = {
+
+constexpr char* s_key_names[] = {
     "NUM 0",
     "NUM 1",
     "NUM 2",
@@ -192,6 +193,7 @@ static const char* s_key_names[] = {
     "ENTER",
 };
 
+
 enum class Button
 {
     NONE = -1,
@@ -212,7 +214,8 @@ enum class Button
     BUTTON_COUNT
 };
 
-static const char* s_button_names[]
+
+constexpr char* s_button_names[]
 {
     "DPAD UP", 
     "DPAD DOWN",
@@ -241,6 +244,7 @@ struct Button_State
     inline bool Is_Released() { return previous && !current; }
 };
 
+
 struct Controller_State
 {
     struct Data
@@ -259,7 +263,7 @@ struct Controller_State
     
     Button_State Get_Button_State(Button button)
     {
-        i16 b = (i16)button;
+        s16 b = (s16)button;
         return Button_State{(m_curr.button_states & (1 << (int)b)) > 0, (m_prev.button_states & (1 << (int)b)) > 0};
     }
     

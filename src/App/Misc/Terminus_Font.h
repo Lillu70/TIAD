@@ -1,8 +1,6 @@
 
 #pragma once
 
-#include "../Utility/Primitives.h"
-
 static constexpr u32 s_terminus_font_char_width = 8;
 static constexpr u32 s_terminus_font_char_height = 14;
 static constexpr u8 s_terminus_font[] =

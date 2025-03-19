@@ -1,0 +1,1 @@
+devenv "bin/Tetris in a day.exe"

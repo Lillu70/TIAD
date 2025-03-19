@@ -7,20 +7,59 @@
 
 #pragma once
 
-#include "Vector.h"
 
-// v2i ----------------------------------------------------------
-static inline v2i operator + (v2i a, v2i b)
+// v2s ----------------------------------------------------------
+static inline v2s operator + (v2s a, v2s b)
 {
-    v2i result = v2i{a.x + b.x, a.y + b.y};
+    v2s result = v2s{a.x + b.x, a.y + b.y};
     return result;
 }
 
 
-static inline v2i operator - (v2i a, v2i b)
+static inline v2s operator - (v2s a, v2s b)
 {
-    v2i result = v2i{a.x - b.x, a.y - b.y};
+    v2s result = v2s{a.x - b.x, a.y - b.y};
     return result;
+}
+
+
+static inline v2s operator + (v2s a, s32 i)
+{
+    v2s result = v2s{a.x + i, a.y + i};
+    return result;
+}
+
+
+static inline v2s operator - (v2s a, s32 i)
+{
+    v2s result = v2s{a.x - i, a.y - i};
+    return result;
+}
+
+
+static inline v2s operator * (v2s a, s32 i)
+{
+    v2s result = v2s{a.x * i, a.y * i};
+    return result;
+}
+
+
+static inline v2s operator / (v2s a, s32 i)
+{
+    v2s result = v2s{a.x  / i, a.y  / i};
+    return result;
+}
+
+
+static inline void operator += (v2s& a, v2s b)
+{
+    a = a + b;
+}
+
+
+static inline void operator -= (v2s& a, v2s b)
+{
+    a = a - b;
 }
 
 
@@ -386,4 +425,62 @@ static inline void operator *= (v4f& v, f32 scalar)
 static inline void operator /= (v4f& v, f32 scalar)
 {
     v = v / scalar;
+}
+
+// Casting
+// --------------------------------------------------------------
+
+static _inline v2f V2F(v2s v)
+{
+    v2f result;
+    result.x = f32(v.x);
+    result.y = f32(v.y);
+    
+    return result;
+}
+
+
+static _inline v2f V2F(v2u v)
+{
+    v2f result;
+    result.x = f32(v.x);
+    result.y = f32(v.y);
+    
+    return result;
+}
+
+
+static _inline v2s AddX(v2s v, s32 X)
+{
+    v2s result = v;
+    result.x += X;
+    
+    return result;
+}
+
+
+static _inline v2s AddY(v2s v, s32 Y)
+{
+    v2s result = v;
+    result.y += Y;
+    
+    return result;
+}
+
+
+static _inline v2f AddX(v2f v, f32 X)
+{
+    v2f result = v;
+    result.x += X;
+    
+    return result;
+}
+
+
+static _inline v2f AddY(v2f v, f32 Y)
+{
+    v2f result = v;
+    result.y += Y;
+    
+    return result;
 }

@@ -20,7 +20,8 @@ struct Image
 {
     // TODO: Make this into Color*
     u8* buffer;
-    v2i dim;
+    v2s dim;
+    u32 row_stride = 0;
 };
 
 
@@ -52,22 +53,22 @@ static inline Canvas Create_Sub_Canvas(Canvas* master_canvas, v2u dim, u32 buffe
 static inline Canvas Create_Sub_Canvas(Canvas* master_canvas, v2u dim, v2u buffer_offset);
 
 // Does bounds checking.
-static inline bool Get_Pixel_Idx(Canvas* canvas, v2i p, u32* out_idx);
+static inline bool Get_Pixel_Idx(Canvas* canvas, v2s p, u32* out_idx);
 
-static inline void Set_Pixel(Canvas* canvas, v2i p, Color color);
+static inline void Set_Pixel(Canvas* canvas, v2s p, Color color);
 
 // Does not do bounds checking.
-static inline u32 Get_Pixel_Idx_HZ(Canvas* canvas, v2i p);
+static inline u32 Get_Pixel_Idx_HZ(Canvas* canvas, v2s p);
 
-static inline void Set_Pixel_HZ(Canvas* canvas, v2i p, Color color);
+static inline void Set_Pixel_HZ(Canvas* canvas, v2s p, Color color);
 
 static inline void Set_Pixel_Idx_HZ(Canvas* canvas, u32 idx, Color color);
 
-static inline void Blend_Pixel_With_Color(Canvas* canvas, v2i p, v3f color, f32 fraction);
+static inline void Blend_Pixel_With_Color(Canvas* canvas, v2s p, v3f color, f32 fraction);
 
-static inline void Blend_Pixel_With_Color(Canvas* canvas, v2i p, v3f color, f32 fraction, u8 alpha);
+static inline void Blend_Pixel_With_Color(Canvas* canvas, v2s p, v3f color, f32 fraction, u8 alpha);
 
-static inline Color Get_Pixel_HZ(Canvas* canvas, v2i p);
+static inline Color Get_Pixel_HZ(Canvas* canvas, v2s p);
 
 static void Clear_Canvas(Canvas* canvas, Color color);
 
@@ -103,17 +104,9 @@ static void Draw_Text(
     v2f pos,
     Color color,
     Font* font,
-    v2i scale);
+    v2s scale);
 
     
-static void Draw_Text(
-    Canvas* canvas,
-    String_View text,
-    v2f pos,
-    Color color,
-    Font* font,
-    v2f scale);    
-
 
 static void Draw_Glyph(
     Canvas* canvas,

@@ -8,9 +8,9 @@
 #pragma once
 
 
-static Color Make_Color(u8 red, u8 green, u8 blue, u8 alpha = 0xFF)
+static constexpr Color Make_Color(u8 red, u8 green, u8 blue, u8 alpha = 0xFF)
 {
-    Color result;
+    Color result = {};
     result.red = red;
     result.green = green;
     result.blue = blue;
@@ -38,17 +38,26 @@ static inline u32 Null_Terminated_Buffer_Lenght(char* buffer)
 }
 
 
-static inline b32 Is_Flag_Set(u32 field, u32 shift)
-{
-    return field & 1 << shift;
-}
-
-
 static inline void Mem_Copy(void* dest, void* source, u32 byte_count)
 {
     Assert(dest);
     Assert(source);
     Assert(byte_count);
+    
+    for(u32 i = 0; i < byte_count; ++i)
+    {
+        u8* sb = ((u8*)source) + i;
+        u8* db = ((u8*)dest) + i;
+        
+        *db = *sb;
+    }
+}
+
+
+static inline void Mem_Copy_Allow_Zero_Bytes(void* dest, void* source, u32 byte_count)
+{
+    Assert(dest);
+    Assert(source);
     
     for(u32 i = 0; i < byte_count; ++i)
     {
@@ -112,8 +121,30 @@ static void Insert_Element_Into_Packed_Array(
 }
 
 
-template<typename T>
-static void Remove_Element_From_Packed_Array(T* array, u32* array_count, u32 remove_idx)
+// Buffer size is assumed to be 11 or greater.
+static char* U32_To_Char_Buffer(u8* buffer, u32 integer)
 {
-    Remove_Element_From_Packed_Array(array, array_count, sizeof(T), remove_idx);
+    // TODO: This works, but's odd and not very intuitive, so rethink and rework this.
+    
+    u32 buffer_size = 11;
+    
+    buffer[buffer_size - 1] = 0;
+    
+    u32 ascii_numeric_offset = 48;
+    u32 last_non_zero = buffer_size - 2;
+    for(u32 i = 0; i < buffer_size - 1; ++i)
+    {
+        u32 digit = 0;
+        if(i > 0)
+            digit = (u32)(integer / Pow32(10, i)) % 10;
+        else
+            digit = integer % 10;
+        u32 write_pos = buffer_size - 2 - i;
+        if(digit)
+            last_non_zero = write_pos;
+        
+        buffer[write_pos] = ascii_numeric_offset + digit;
+    }
+    
+    return (char*)(buffer + last_non_zero);
 }

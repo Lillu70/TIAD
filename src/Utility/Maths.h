@@ -49,6 +49,13 @@ static inline T Abs(T v)
 #endif
 
 
+static inline f32 Inv(f32 value)
+{
+    f32 result = 1.f - value;
+    return result;
+}
+
+
 static inline f64 Sin(f64 value)
 {
     f64 result = sin(value);
@@ -67,6 +74,21 @@ static inline f32 Cos(f32 value)
 {
     f32 result = cosf(value);
     return result;    
+}
+
+
+static inline f32 ArcTan2(f32 y, f32 x)
+{
+    f32 result = 0;
+    result = atan2f(y, x);
+    return result;
+}
+
+
+static inline f32 ArcTan2(v2f v)
+{
+    f32 result = ArcTan2(v.y, v.x);
+    return result;
 }
 
 
@@ -91,6 +113,13 @@ static inline f64 Square(f64 value)
 }
 
 
+static constexpr inline s32 Square(s32 value)
+{
+    s32 result = value * value;
+    return result;
+}
+
+
 static inline f64 Cube(f64 value)
 {
     f64 result = value * value * value;
@@ -98,10 +127,64 @@ static inline f64 Cube(f64 value)
 }
 
 
+static inline f32 Length(v2f v)
+{
+    f32 result = Root(Square(v.x) + Square(v.y));
+    return result;
+}
+
+
+static inline f32 Length_Squared(v2f v)
+{
+    f32 result = Square(v.x) + Square(v.y);
+    return result;
+}
+
+
+
+static inline v2f Normalize(v2f v)
+{
+    f32 lenght = Length(v);
+    v2f result =  {};
+    if(lenght > 0)
+        result = v / lenght;
+    
+    return result;
+}
+
+
+// Inner Product
+static inline f32 Dot_Product(v2f a, v2f b)
+{
+    f32 result = (a.x * b.x) + (a.y * b.y);
+    return result;    
+}
+
+
+static inline v2s CW_Perp(v2s p)
+{
+    v2s result;
+    result.x = p.y;
+    result.y = p.x * -1;
+    
+    return result;
+}
+
+
+static inline v2s CCW_Perp(v2s p)
+{
+    v2s result;
+    result.x = p.y * -1;
+    result.y = p.x;
+    
+    return result;
+}
+
+
 // Rounds to the nearest whole number towards negative infinity.
 static inline f32 Floor(f32 value)
 {
-    f32 result = f32((i32)value);
+    f32 result = f32((s32)value);
     if(result > value)
         result -= 1;
 
@@ -111,7 +194,7 @@ static inline f32 Floor(f32 value)
 
 static inline f64 Floor(f64 value)
 {
-    f64 result = f64((i64)value);
+    f64 result = f64((s64)value);
     if(result > value)
         result -= 1;
 
@@ -128,7 +211,14 @@ static inline v2f Floor(v2f v)
 
 static inline v2f Trunc(v2f v)
 {
-    v2f result = { f32(i32(v.x)), f32(i32(v.y)) };
+    v2f result = { f32(s32(v.x)), f32(s32(v.y)) };
+    return result;
+}
+
+
+static inline f32 Trunc(f32 v)
+{
+    f32 result = f32(s32(v));
     return result;
 }
 
@@ -136,7 +226,18 @@ static inline v2f Trunc(v2f v)
 // Rounds to the nearest whole number towards positive infinity.
 static inline constexpr f32 Ceil(f32 value)
 {
-    f32 result = f32((i32)value);
+    f32 result = f32((s32)value);
+    if(result < value)
+        result += 1;
+    
+    return result;
+}
+
+
+// Rounds to the nearest whole number towards positive infinity.
+static inline constexpr f64 Ceil(f64 value)
+{
+    f64 result = f64((s64)value);
     if(result < value)
         result += 1;
     
@@ -157,7 +258,7 @@ static inline f32 Round(f32 real)
     if(real < 0)
         shift *= -1;
     
-    f32 result = (f32)((i32)(real + shift));
+    f32 result = (f32)((s32)(real + shift));
     return result;
 }
 
@@ -211,17 +312,17 @@ static inline f32 Componentwise_Add(v2f v)
 }
 
 
-static inline i32 Round_To_Signed_Int32(f32 real)
+static inline s32 Round_To_Signed_Int32(f32 real)
 {
-    i32 result = (u32)(real + 0.5f);
+    s32 result = (u32)(real + 0.5f);
     return result;
 }
 
 
-static inline v2i Round_To_Signed_Int32(v2f v)
+static inline v2s Round_To_Signed_Int32(v2f v)
 {
     v += 0.5f;
-    v2i result = v2f::Cast<i32>(v);    
+    v2s result = v2f::Cast<s32>(v);    
     return result;
 }
 
@@ -335,7 +436,16 @@ static inline Rect Expand_Rect(Rect rect, f32 expand_factor)
 }
 
 
-static inline Rect Shink_Rect(Rect rect, f32 shrink_factor)
+static inline Rect Expand_Rect(Rect rect, v2f expand_factor)
+{
+    Rect result = Rect{rect.min - expand_factor, rect.max + expand_factor};
+    Assert(Is_Rect_Valid(result));
+    
+    return result;
+}
+
+
+static inline Rect Shrink_Rect(Rect rect, f32 shrink_factor)
 {
     Rect result = Rect{rect.min + shrink_factor, rect.max - shrink_factor};
     Assert(Is_Rect_Valid(result));
@@ -374,13 +484,13 @@ static inline f64 Clamp_To_Barycentric(f64 real)
 }
 
 
-static inline u32 Noise_Squirrel3(i32 np, u32 seed)
+static inline u32 Noise_Squirrel3(s32 np, u32 seed)
 {
     constexpr u32 BIT_NOISE1 = 0xB5297A3D;
     constexpr u32 BIT_NOISE2 = 0x68E31DA4;
     constexpr u32 BIT_NOISE3 = 0x1B56C4E9;
     
-    i32 mangled = np;
+    s32 mangled = np;
     mangled *= BIT_NOISE1;
     mangled += seed;
     mangled ^= (mangled >> 8);
@@ -392,7 +502,7 @@ static inline u32 Noise_Squirrel3(i32 np, u32 seed)
 }
 
 
-static inline u32 Noise_Squirrel3_2D(v2i np, u32 seed)
+static inline u32 Noise_Squirrel3_2D(v2s np, u32 seed)
 {
     constexpr int PRIME_NUMBER = 198491317;
     return Noise_Squirrel3(np.x + (PRIME_NUMBER * np.y), seed);
@@ -417,6 +527,13 @@ static inline f32 Clamp_Zero_To_One(f32 real)
 static inline f32 Clamp_Zero_To_Max(f32 real, f32 max)
 {
     f32 result = Max(0.f, Min(max, real));
+    return result;
+}
+
+
+static inline f64 Powf64(f64 base, f64 exponent)
+{
+    f64 result = pow(base, exponent);
     return result;
 }
 
