@@ -10,10 +10,15 @@ Here is how to do it:
 
  - Make sure you have MSVC installed and you're in luck as it comes with Visual Studio.
 
- - Open the cp.bat in your favorite text editor. Replace the path in there with where every our "vcvars64.bat" is located. It's likely the same, but it's a good idea to check. "vcvars64.bat" Enables running the compiler/linker from any directory.
+ There are couple of ways to actually get Microsofts compiler to work in any any file:
+ - Option A) Simply search for "Developer Command Prompt" Your instaled version should popup. 
 
- - Save and close cp.bat, then run it! It will open a command prompt (with access to the compiler) in the project directory.
+ - Option B) Open the cp.bat in your favorite text editor. Replace the path in there with where every our "vcvars64.bat" is located. It's likely the same, but it's a good idea to check. "vcvars64.bat" Enables running the compiler/linker from any directory. Save and close cp.bat, then run it! It will open a command prompt (with access to the compiler) in the project directory.
 
- - Then in that command prompt input the command "build" or "optbuild" for some o2 fun.
+ - Option C) Manually add the required enviroment variables, I only recomend doing this if you enjoy pain.
+
+ - How ever you got the complier to work, navigate your command prompt to the where ever the repo was cloned. If you see Build.bat you're in the right directory.
+
+ - Run said "Build.bat" or "Optbuild.bat" for some o2 fun.
 
  - If you want to open it in visual studio in then run the Debugger.bat (you need to build before this works)
