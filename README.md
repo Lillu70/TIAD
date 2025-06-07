@@ -1,4 +1,5 @@
 # TIAD - Tetris in a Day
+
 Tetris clone made in a day (about 12hrs).
 
 The platform and rendering code I copied from another project, so those don't count.
@@ -23,3 +24,7 @@ Here is how to do it:
  - 3] Run said "Build.bat" or "Optbuild.bat" for some o2 fun. This will create a new folder called "bin" that will house the executable.
 
  - If you want to open it in visual studio in then run the Debugger.bat (you need to build before this works)
+
+
+# This is what it looks like!
+![Alt Text](https://github.com/Lillu70/Assets/blob/main/TIAD.png)
